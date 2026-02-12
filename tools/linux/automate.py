@@ -60,10 +60,24 @@ def install_qt_prebuild():
   url_amd64 = "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/qt/qt_binary_5.9.9_gcc_64.7z"
   base.download(url_amd64, "./qt_amd64.7z")
   base.extract("./qt_amd64.7z", "./qt_build")
+
   base.create_dir("./qt_build/Qt-5.9.9")
-  base.cmd("mv", ["./qt_build/qt_amd64", "./qt_build/Qt-5.9.9/gcc_64"])
-  base.setup_local_qmake("./qt_build/Qt-5.9.9/gcc_64/bin")
+  target = "./qt_build/Qt-5.9.9/gcc_64"
+
+  # Find extracted Qt dir by locating qmake
+  qmake_path = base.run_command("bash -lc \"set -e; find ./qt_build -type f -path '*/bin/qmake' | head -n 1\"")["stdout"].strip()
+  if not qmake_path:
+    raise Exception("Qt prebuild extracted but qmake not found under ./qt_build")
+
+  extracted_root = os.path.dirname(os.path.dirname(qmake_path))  # .../bin/qmake -> .../
+  # Move extracted root to target gcc_64
+  if base.is_dir(target):
+    base.cmd("rm", ["-rf", target])
+  base.cmd("mv", [extracted_root, target])
+
+  base.setup_local_qmake(target + "/bin")
   return
+
 
 if not base.is_file("./node_js_setup_14.x"):
   print("install dependencies...")
